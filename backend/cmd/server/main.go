@@ -1,22 +1,21 @@
 package main
 
 import (
-"context"
-"encoding/json"
-"flag"
-"fmt"
-"net/http"
-"os"
-"os/signal"
-"syscall"
-"time"
+	"context"
+	"flag"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-"github.com/google/uuid"
-"github.com/gorilla/websocket"
-"go.uber.org/zap"
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 
-"messenger-backend/internal/database"
-"messenger-backend/internal/websocket"
+	"messenger-backend/internal/database"
+	ws "messenger-backend/internal/websocket"
 )
 
 var upgrader = websocket.Upgrader{

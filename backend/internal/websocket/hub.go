@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"time"
 
@@ -186,7 +187,7 @@ func (c *Client) SendJSON(msg WSMessage) error {
 }
 
 // ErrBufferFull indicates the send buffer is full
-var ErrBufferFull = websocket.ErrWriteBufferPool
+var ErrBufferFull = errors.New("send buffer full")
 
 // WritePump handles writing messages to the WebSocket connection
 func (c *Client) WritePump() {

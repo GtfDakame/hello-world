@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"errors"
-	"hash"
 )
 
 // DHFunction represents a Diffie-Hellman function
@@ -79,7 +78,7 @@ func (r *DoubleRatchet) Encrypt(plaintext []byte, associatedData []byte) ([]byte
 	mk := r.nextSendingMessageKey()
 
 	// Encrypt using AES-GCM or ChaCha20-Poly1305
-	ciphertext, nonce, err := ChaCha20Poly1305Encrypt(mk.Key, plaintext, associatedData)
+	ciphertext, _, err := ChaCha20Poly1305Encrypt(mk.Key, plaintext, associatedData)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -94,7 +93,7 @@ func (r *DoubleRatchet) Encrypt(plaintext []byte, associatedData []byte) ([]byte
 func (r *DoubleRatchet) Decrypt(ciphertext, nonce, associatedData, remoteEphemeral []byte) ([]byte, error) {
 	if len(remoteEphemeral) > 0 {
 		// DH ratchet step
-		if err := r.dhRatchet(remoteEphemeral); err != nil {
+		if err := r.dHRatchet(remoteEphemeral); err != nil {
 			return nil, err
 		}
 	}
@@ -223,7 +222,6 @@ func (r *DoubleRatchet) nextSendingMessageKey() *MessageKey {
 func (r *DoubleRatchet) nextReceivingMessageKey(chainKey *ChainKey) *ChainKey {
 	h := hmac.New(sha256.New, chainKey.Key)
 	h.Write([]byte{0x01})
-	messageKey := h.Sum(nil)
 
 	h2 := hmac.New(sha256.New, chainKey.Key)
 	h2.Write([]byte{0x02})
