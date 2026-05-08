@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - Основное хранилище данных
+  postgres:
+    image: postgres:15-alpine
+    container_name: messenger-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-messenger}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password_change_me}
+      POSTGRES_DB: ${DB_NAME:-messenger}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-messenger}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - messenger-net
+
+  # Redis - Кэш, сессии, pub/sub
+  redis:
+    image: redis:7-alpine
+    container_name: messenger-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-secure_redis_password}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - messenger-net
+
+  # Backend API + WebSocket
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: messenger-backend
+    restart: unless-stopped
+    environment:
+      - GIN_MODE=release
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-messenger}
+      - DB_PASSWORD=${DB_PASSWORD:-secure_password_change_me}
+      - DB_NAME=${DB_NAME:-messenger}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-secure_redis_password}
+      - JWT_SECRET=${JWT_SECRET:-change_this_secret_in_production}
+      - APP_ENV=production
+      - LOG_LEVEL=info
+      - MEDIA_STORAGE_PATH=/app/media
+    volumes:
+      - media_storage:/app/media
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - messenger-net
+
+  # Nginx - Reverse Proxy + SSL Termination (опционально)
+  nginx:
+    image: nginx:alpine
+    container_name: messenger-nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+      - ../clients/web/dist:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    networks:
+      - messenger-net
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  media_storage:
+    driver: local
+
+networks:
+  messenger-net:
+    driver: bridge
