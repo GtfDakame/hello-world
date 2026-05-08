@@ -14,8 +14,8 @@ import (
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 
-	"messenger-backend/internal/database"
-	ws "messenger-backend/internal/websocket"
+	"messenger/internal/database"
+	ws "messenger/internal/websocket"
 )
 
 var upgrader = websocket.Upgrader{
