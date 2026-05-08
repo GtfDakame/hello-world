@@ -91,7 +91,7 @@ type Client struct {
 type Hub struct {
 	clients    map[string]*Client
 	broadcast  chan []byte
-	register   chan *Client
+	Register   chan *Client
 	unregister chan *Client
 	mu         sync.RWMutex
 	logger     *zap.Logger
@@ -102,7 +102,7 @@ func NewHub(logger *zap.Logger) *Hub {
 	return &Hub{
 		clients:    make(map[string]*Client),
 		broadcast:  make(chan []byte, 256),
-		register:   make(chan *Client),
+		Register:   make(chan *Client),
 		unregister: make(chan *Client),
 		logger:     logger,
 	}
@@ -115,7 +115,7 @@ func (h *Hub) Run(ctx context.Context) {
 		case <-ctx.Done():
 			h.logger.Info("Shutting down WebSocket hub")
 			return
-		case client := <-h.register:
+		case client := <-h.Register:
 			h.mu.Lock()
 			h.clients[client.ID] = client
 			h.mu.Unlock()

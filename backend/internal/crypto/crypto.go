@@ -39,12 +39,14 @@ func GenerateKeyPair() (*KeyPair, error) {
 
 // ECDH performs Elliptic Curve Diffie-Hellman key exchange
 func ECDH(privateKey, publicKey *[32]byte) ([32]byte, error) {
-	var sharedSecret [32]byte
-	if _, err := curve25519.X25519(privateKey[:], publicKey[:]); err != nil {
-		return sharedSecret, err
+	sharedSecret, err := curve25519.X25519(privateKey[:], publicKey[:])
+	if err != nil {
+		var empty [32]byte
+		return empty, err
 	}
-	copy(sharedSecret[:], privateKey[:])
-	return sharedSecret, nil
+	var result [32]byte
+	copy(result[:], sharedSecret)
+	return result, nil
 }
 
 // AESGCM encrypts data using AES-256-GCM
